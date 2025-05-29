@@ -38,3 +38,5 @@ jobs:
             -f scripts/setup.sql
         env:
           PGPASSWORD: ${{ secrets.DB_PASSWORD }}
+
+#this is first CICD project
