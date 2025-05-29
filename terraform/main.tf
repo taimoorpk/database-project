@@ -16,13 +16,11 @@ provider "aws" {
   region = var.aws_region
 }
 
-# Get current public IP automatically
 data "http" "my_public_ip" {
   url = "https://ifconfig.me/ip"
 }
 
 locals {
-  # Clean the IP response and add /32 CIDR
   my_ip_cidr = "${chomp(data.http.my_public_ip.response_body)}/32"
 }
 
@@ -31,7 +29,7 @@ resource "aws_db_instance" "postgres_db" {
   instance_class         = var.instance_class
   allocated_storage      = 20
   engine                 = "postgres"
-  engine_version         = "14.4"
+  engine_version         = "14.7"  # Updated to latest 14.x version available in AWS
   db_name                = "customers_orders"
   username               = var.db_username
   password               = var.db_password
@@ -39,21 +37,21 @@ resource "aws_db_instance" "postgres_db" {
   skip_final_snapshot    = true
   publicly_accessible    = false
   vpc_security_group_ids = [aws_security_group.db_sg.id]
-  
-  # Enable deletion protection in production
-  deletion_protection = false
+  multi_az               = false    # Set to true for production
+  storage_encrypted      = true     # Enable encryption at rest
+  apply_immediately      = true     # For testing (false for production)
 }
 
 resource "aws_security_group" "db_sg" {
   name        = "customers-orders-db-sg"
-  description = "Allow PostgreSQL access from current IP"
+  description = "Security group for customers/orders database"
 
   ingress {
-    description = "PostgreSQL from current IP"
+    description = "PostgreSQL access from current IP"
     from_port   = 5432
     to_port     = 5432
     protocol    = "tcp"
-    cidr_blocks = [local.my_ip_cidr] # Uses automatically detected IP
+    cidr_blocks = [local.my_ip_cidr]
   }
 
   egress {
@@ -64,6 +62,6 @@ resource "aws_security_group" "db_sg" {
   }
 
   tags = {
-    Name = "customers-orders-db-access"
+    Name = "customers-orders-db-sg"
   }
 }
